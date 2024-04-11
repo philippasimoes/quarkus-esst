@@ -1,9 +1,8 @@
-package com.fdsimoes.quarkus.data.web.rest;
+package com.fdsimoes.quarkus.web.rest;
 
 import com.fdsimoes.quarkus.data.entity.Vendor;
-import com.fdsimoes.quarkus.data.repository.VendorRepository;
+import com.fdsimoes.quarkus.service.VendorService;
 import io.netty.util.internal.StringUtil;
-import jakarta.transaction.Transactional;
 import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
@@ -26,37 +25,32 @@ import org.jboss.resteasy.reactive.RestQuery;
 @Consumes("application/json")
 public class VendorEndpoint {
 
-  private final VendorRepository vendorRepository;
+  private final VendorService vendorService;
 
-  public VendorEndpoint(VendorRepository vendorRepository) {
+  public VendorEndpoint(VendorService vendorService) {
 
-    this.vendorRepository = vendorRepository;
+    this.vendorService = vendorService;
   }
 
   @GET
   public List<Vendor> getVendors(@RestQuery("email") String email) {
     if (StringUtil.isNullOrEmpty(email)) {
-      return this.vendorRepository.listAll();
+      return this.vendorService.getAllVendors();
     }
 
-    List<Vendor> vendors = new ArrayList<>();
-    Vendor vendor = this.vendorRepository.findByEmail(email);
-    vendors.add(vendor);
-    return vendors;
+    return this.vendorService.getVendorByEmail(email);
   }
 
   @POST
   @ResponseStatus(201)
-  @Transactional
   public Vendor addVendor(Vendor vendor) {
-    this.vendorRepository.persist(vendor);
-    return vendor;
+    return this.vendorService.addVendor(vendor);
   }
 
   @GET
   @Path("/{id}")
   public Vendor getVendor(@RestPath("id") long id) {
-    Vendor vendor = this.vendorRepository.findById(id);
+    Vendor vendor = this.vendorService.getVendorById(id);
 
     if (vendor == null) {
       throw new NotFoundException();
@@ -70,13 +64,10 @@ public class VendorEndpoint {
   public List<Vendor> getVendorByName(@RestPath("name") String name) {
 
     if (StringUtil.isNullOrEmpty(name)) {
-      return this.vendorRepository.listAll();
+      return this.vendorService.getAllVendors();
     }
 
-    List<Vendor> vendors = new ArrayList<>();
-    Vendor vendor = this.vendorRepository.findByName(name);
-    vendors.add(vendor);
-    return vendors;
+    return this.vendorService.getVendorsByName(name);
   }
 
   @GET
@@ -85,48 +76,34 @@ public class VendorEndpoint {
       @QueryParam("name") String name, @QueryParam("email") String email) {
 
     if (StringUtil.isNullOrEmpty(name) && StringUtil.isNullOrEmpty(email)) {
-      return this.vendorRepository.listAll();
+      return this.vendorService.getAllVendors();
     } else {
       List<Vendor> vendors = new ArrayList<>();
       if (!StringUtil.isNullOrEmpty(name) && !StringUtil.isNullOrEmpty(email)) {
-        Vendor vendor = this.vendorRepository.findByNameAndEmail(name, email);
-        vendors.add(vendor);
+        return this.vendorService.getVendorsByNameAndEmail(name, email);
       } else if (!StringUtil.isNullOrEmpty(email)) {
-        Vendor vendor = this.vendorRepository.findByEmail(email);
-        vendors.add(vendor);
+        return this.vendorService.getVendorByEmail(email);
       } else {
-        Vendor vendor = this.vendorRepository.findByName(name);
-        vendors.add(vendor);
+        return this.vendorService.getVendorsByName(name);
       }
-      return vendors;
     }
   }
 
   @PUT
   @Path("/{id}")
-  @Transactional
   @ResponseStatus(204)
   public void updateVendor(@RestPath("id") long id, Vendor vendor) {
     if (id != vendor.getId()) {
       throw new BadRequestException();
     }
-    Vendor vendorEntity = this.vendorRepository.findById(id);
-    if (vendorEntity == null) {
-      throw new NotFoundException();
-    }
-
-    vendorEntity.setAddress(vendor.getAddress());
-    vendorEntity.setEmail(vendor.getEmail());
-    vendorEntity.setName(vendor.getName());
-    vendorEntity.setPhone(vendor.getPhone());
-    this.vendorRepository.persist(vendorEntity);
+    this.vendorService.updateVendor(vendor);
   }
 
   @DELETE
   @Path("/{id}")
-  @Transactional
   @ResponseStatus(205)
   public void deleteVendor(@RestPath("id") long id) {
-    this.vendorRepository.deleteById(id);
+
+    this.vendorService.deleteVendor(id);
   }
 }
